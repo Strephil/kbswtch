@@ -12,13 +12,12 @@
 
 #define XKB_CTRLS_MASK (XkbAllControlsMask & ~(XkbInternalModsMask | XkbIgnoreLockModsMask))
 
-int getSelection(Display * display, const wchar_t **data, Window win);
+int getSelection(Display * display, wchar_t *data, Window win);
 int sendKey(Display * display, Window owner, unsigned int state,
 	    KeyCode keycode);
 int createKeyMap(Display * display);
 int getKeyCode(wchar_t symbol, unsigned char group, unsigned char *state,  KeyCode *keycode);
 int getSelectionGroup(const wchar_t *data, unsigned char *group);
-int dataToW(unsigned char *data, const wchar_t **wstring);
 int stateTransform(unsigned int* ret, unsigned char group, unsigned char
 		state);
 void eventLoop();
@@ -88,7 +87,7 @@ void eventLoop()
 int kbswtch(char dest_group)
 {
 	unsigned char state, group;
-	const wchar_t *data;
+	wchar_t data[1024];
 	unsigned int dest_state;
 	KeyCode keycode;
 	int i;
@@ -97,7 +96,7 @@ int kbswtch(char dest_group)
 	if((owner = XGetSelectionOwner(display, XA_PRIMARY)) == None) {
 		printf("%s\n", "Can not get selection owner");
 		ret = 1;
-	} else if(getSelection(display, &data, win)) {
+	} else if(getSelection(display, data, win)) {
 		ret = 1;
 	} else if (getSelectionGroup(data, &group)) {
 		printf("%s\n", "Can not get selection group");
@@ -117,7 +116,7 @@ int kbswtch(char dest_group)
 	return ret;
 }
 
-int getSelection(Display * display, const wchar_t **data, Window win)
+int getSelection(Display * display, wchar_t *data, Window win)
 {
 	XEvent evt;
 	Atom type;
@@ -154,7 +153,7 @@ int getSelection(Display * display, const wchar_t **data, Window win)
 				    &type, &format, &len, &dummy, &raw_data);
 
 	if (result == Success) {
-		dataToW(raw_data, data);
+		mbstowcs (data, raw_data, strlen(raw_data));
 		ret = 0;
 	} else {
 		ret = 1;
@@ -203,19 +202,6 @@ found:
 	return 0;
 }
 	
-int dataToW(unsigned char *data, const wchar_t **wstring)
-{
-	wchar_t *W;
-	W = calloc (strlen(data), sizeof(wchar_t));
-	if (!W) {
-		fprintf(stderr,"Can not alloc memory!\n");
-		return 1;
-	}
-	mbstowcs(W,data,strlen(data));
-	*wstring = W;
-	return 0;
-}
-
 int getSelectionGroup(const wchar_t *data, unsigned char *group)
 {
 	const wchar_t *W;
